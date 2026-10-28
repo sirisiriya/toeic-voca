@@ -8,12 +8,12 @@
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="토익단어">
+<meta name="apple-mobile-web-app-title" content="시리 토익">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
-<title>토익 독종반 단어장</title>
+<title>시리 토익</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Literata:opsz,wght@7..72,500;7..72,700&display=swap">
 <style>
@@ -77,6 +77,8 @@ main .wrap{padding-block:16px 48px}
 .head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .word{font-family:var(--f-word);font-size:21px;font-weight:700;letter-spacing:-.005em}
 .means{display:grid;gap:2px}
+.ipa{font-family:var(--f-body);font-size:14px;color:var(--muted);margin-left:8px;white-space:nowrap}
+.card .ipa{display:block;margin:2px 0 0;font-size:18px}
 .mean{display:flex;gap:6px;align-items:baseline}
 .pos{flex:none;font-size:11px;font-weight:600;color:var(--accent);border:1px solid currentColor;border-radius:4px;padding:0 4px;line-height:1.5}
 .ex{margin-top:4px;padding-left:10px;border-left:2px solid var(--line);font-size:14px;display:grid;gap:1px}
@@ -171,7 +173,7 @@ span.blind{display:inline-block}
 <header>
   <div class="wrap">
     <div class="titlebar">
-      <h1>토익 독종반 단어장<small id="rangeLabel">1–100</small></h1>
+      <h1>시리 토익<small id="rangeLabel">1–100</small></h1>
       <span class="right"><span class="progress" id="progress"></span>
         <button class="icon" id="themeBtn" aria-label="화면 모드 바꾸기" title="자동 / 라이트 / 다크"></button>
         <button class="icon gear" id="gearBtn" aria-label="설정 열기" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button></span>
@@ -198,7 +200,7 @@ span.blind{display:inline-block}
 
 <div id="lock">
   <form class="lockbox" id="lockForm" autocomplete="off">
-    <h2>토익 독종반 단어장</h2>
+    <h2>시리 토익</h2>
     <p>허용된 사람만 볼 수 있어요. 비밀번호를 입력하세요.</p>
     <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" aria-label="비밀번호" enterkeyhint="go">
     <label><input type="checkbox" id="remember" checked> 이 기기에서 기억하기</label>
@@ -210,13 +212,13 @@ span.blind{display:inline-block}
 <script>
 (function(){
 let ALL = [];
-const SETS = Array.from({length:12},(_,i)=>({n:i+1,from:i*100+1,to:i*100+100}));
+const SETS = Array.from({length:48},(_,i)=>({n:i+1,from:i*25+1,to:i*25+25}));
 const store = {
   get(k,d){try{const v=localStorage.getItem('toeic.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
   set(k,v){try{localStorage.setItem('toeic.'+k,JSON.stringify(v))}catch(e){}}
 };
 const S = {
-  set: store.get('set',1), mode: store.get('mode','list'), blind: store.get('blind','none'),
+  set: store.get('set25',1), mode: store.get('mode','list'), blind: store.get('blind','none'),
   ex: store.get('ex','both'), theme: store.get('theme','auto'), onlyUnknown:false, shuffled:false,
   known: new Set(store.get('known',[])), revealed:new Set(), idx:0, flipped:false, order:null,
   accent: store.get('accent','en-US'), rate: store.get('rate','0.9')
@@ -270,6 +272,7 @@ function blindAttr(kind,id){
   const key=kind+id; const covered=S.blind===kind&&!S.revealed.has(key);
   return `class="blind${covered?' covered':''}" data-reveal="${key}"${covered?' tabindex="0" role="button" aria-label="가린 내용 보기"':''}`;
 }
+function wordHTML(w){ return `<span class="word">${esc(w.word)}</span>${w.ipa?`<span class="ipa">/${esc(w.ipa)}/</span>`:''}`; }
 function meansHTML(w){
   return `<div class="means">${w.means.map(m=>`<div class="mean">${m[0]?`<span class="pos">${m[0]}</span>`:''}<span>${esc(m[1])}</span></div>`).join('')}</div>`;
 }
@@ -286,9 +289,11 @@ function exHTML(w){
   return out.join('');
 }
 function renderSets(){
-  const have=new Set(ALL.map(w=>Math.ceil(w.id/100)));
+  const have=new Set(ALL.map(w=>Math.ceil(w.id/25)));
   $('#sets').innerHTML=SETS.map(s=>`<button class="set" data-set="${s.n}" aria-pressed="${s.n===S.set}" ${have.has(s.n)?'':'disabled title="이 구간 PDF가 없어요"'}>${s.from}–${s.to}</button>`).join('');
   const s=SETS[S.set-1]; $('#rangeLabel').textContent=`${s.from}–${s.to}`;
+  const on=document.querySelector('.set[aria-pressed="true"]'), box=$('#sets');
+  if(on&&box) box.scrollLeft=on.offsetLeft-box.clientWidth/2+on.offsetWidth/2;
 }
 function renderProgress(){
   const s=SETS[S.set-1]; const inSet=ALL.filter(w=>w.id>=s.from&&w.id<=s.to);
@@ -302,7 +307,7 @@ function renderList(){
     <div class="row${S.known.has(w.id)?' known':''}">
       <span class="num">${w.id}</span>
       <div class="main">
-        <div class="head"><span ${blindAttr('en',w.word)}><span class="word">${esc(w.word)}</span></span></div>
+        <div class="head"><span ${blindAttr('en',w.word)}>${wordHTML(w)}</span></div>
         <div ${blindAttr('ko',w.id)}>${meansHTML(w)}</div>
         ${exHTML(w)}
       </div>
@@ -320,9 +325,9 @@ function renderCard(){
   // 카드 모드: 블라인드 '영어' = 뜻을 보고 단어 맞히기, 그 외 = 단어 보고 뜻 맞히기
   const front= S.blind==='en'
     ? `${meansHTML(w)}`
-    : `<span class="word">${esc(w.word)}</span>`;
+    : wordHTML(w);
   const back = S.blind==='en'
-    ? `<span class="word">${esc(w.word)}</span>${exHTML(w)}`
+    ? `${wordHTML(w)}${exHTML(w)}`
     : `${meansHTML(w)}${exHTML(w)}`;
   return `<div class="card-stage">
     <div class="card" id="card" tabindex="0" role="button" aria-label="카드 뒤집기">
@@ -352,7 +357,7 @@ function render(){
   $('#accent').value=S.accent; $('#rate').value=S.rate;
   $('#view').innerHTML = S.mode==='card'?renderCard():renderList();
 }
-function save(){ store.set('set',S.set);store.set('mode',S.mode);store.set('blind',S.blind);store.set('ex',S.ex);store.set('theme',S.theme);store.set('known',[...S.known]);store.set('accent',S.accent);store.set('rate',S.rate); }
+function save(){ store.set('set25',S.set);store.set('mode',S.mode);store.set('blind',S.blind);store.set('ex',S.ex);store.set('theme',S.theme);store.set('known',[...S.known]);store.set('accent',S.accent);store.set('rate',S.rate); }
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener('click',e=>{
@@ -417,9 +422,9 @@ async function decryptWith(key,enc){
   return JSON.parse(new TextDecoder().decode(pt));
 }
 function start(rows){
-  ALL=rows.map(r=>({id:r[0],word:r[1],means:r[2],ex:r[3],exKo:r[4],siri:r[5],siriKo:r[6]}));
+  ALL=rows.map(r=>({id:r[0],word:r[1],means:r[2],ex:r[3],exKo:r[4],siri:r[5],siriKo:r[6],ipa:r[7]||''}));
   $('#lock').hidden=true;
-  if(!ALL.some(w=>Math.ceil(w.id/100)===S.set)) S.set=1;
+  if(!ALL.some(w=>Math.ceil(w.id/25)===S.set)) S.set=1;
   render();
 }
 async function boot(){

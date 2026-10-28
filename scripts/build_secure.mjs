@@ -10,10 +10,10 @@ const pass = process.env.PASSCODE;
 if (!pass || pass.length < 6) { console.error('PASSCODE 환경변수(6자 이상)가 필요해요.'); process.exit(1); }
 const ITER = 310000;
 const load = p => existsSync(join(root, p)) ? JSON.parse(readFileSync(join(root, p), 'utf8')) : {};
-const raw = load('data/raw.json'), ex = load('data/examples.json'), siri = load('data/examples_siri.json');
+const raw = load('data/raw.json'), ex = load('data/examples.json'), siri = load('data/examples_siri.json'), ipa = load('data/ipa.json');
 const rows = raw.map(w => {
   const e = ex[w.id] || ['', ''], s = siri[w.id] || ['', ''];
-  return [w.id, w.word, w.meanings.map(m => [m.pos, m.meaning]), e[0], e[1], s[0], s[1]];
+  return [w.id, w.word, w.meanings.map(m => [m.pos, m.meaning]), e[0], e[1], s[0], s[1], ipa[w.id] || ''];
 });
 const b64 = u8 => Buffer.from(u8).toString('base64');
 const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
