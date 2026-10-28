@@ -132,6 +132,40 @@ span.blind{display:inline-block}
 .ex .en .tx{flex:1;min-width:0}
 .card .ex{width:100%}
 .card .ex .en{text-align:left}
+/* 퀴즈 */
+header.quizmode .nq{display:none}
+.quiz{display:grid;gap:14px;max-width:520px;margin:0 auto}
+.qtabs{display:flex;justify-content:center}
+.qbox{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px 18px;display:grid;gap:14px;justify-items:center;text-align:center}
+.qmeta{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.qbar{height:4px;width:100%;background:var(--line);border-radius:2px;overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent)}
+.qprompt .mean{font-size:19px;justify-content:center}
+.qprompt .word{font-size:34px}
+.qprompt .ipa{display:block;margin:2px 0 0;font-size:18px}
+.qin{font:inherit;font-size:20px;font-family:var(--f-word);text-align:center;width:100%;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.qin:focus{outline:none;border-color:var(--accent)}
+.qin:disabled{opacity:.7}
+.qrow{display:flex;gap:8px;width:100%}
+.qrow .btn{flex:1;min-height:48px;font-size:16px}
+.fb{width:100%;padding:12px;border-radius:10px;display:grid;gap:6px;justify-items:center}
+.fb.ok{background:var(--ok-soft);color:var(--ok)}
+.fb.bad{background:var(--siri-soft);color:var(--ink)}
+.fb .ans{font-family:var(--f-word);font-size:24px;font-weight:700;letter-spacing:.02em}
+.fb .mine{font-family:var(--f-word);font-size:20px;letter-spacing:.04em}
+.fb .mine b{color:var(--sheet);text-decoration:underline}
+.opts{display:grid;gap:8px;width:100%}
+.opt{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:12px 14px;font-size:16px;text-align:left;min-height:48px}
+.opt.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.opt.wrong{background:var(--siri-soft);border-color:var(--sheet)}
+.opt:disabled{cursor:default}
+.bigspk{width:72px;height:72px;border-radius:50%}
+.bigspk svg{width:30px;height:30px}
+.qsum{font-size:34px;font-weight:700;font-family:var(--f-mono)}
+.wlist{width:100%;text-align:left;display:grid;gap:6px;font-size:14px}
+.wlist div{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:6px}
+.wlist b{font-family:var(--f-word);font-size:16px}
+.linkbtn{border:0;background:none;color:var(--accent);font-size:13px;text-decoration:underline;padding:4px}
 /* 잠금 화면 */
 #lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px max(24px,env(safe-area-inset-right)) 24px max(24px,env(safe-area-inset-left))}
 #lock[hidden]{display:none}
@@ -181,10 +215,10 @@ span.blind{display:inline-block}
     <div class="sets" id="sets" role="group" aria-label="세트 선택"></div>
     <div class="controls">
       <span class="ctl"><span class="lbl">보기</span>
-        <span class="seg" id="modeSeg"><button data-v="list" aria-pressed="true">목록</button><button data-v="card" aria-pressed="false">카드</button></span></span>
-      <span class="ctl"><span class="lbl">블라인드</span>
+        <span class="seg" id="modeSeg"><button data-v="list" aria-pressed="true">목록</button><button data-v="card" aria-pressed="false">카드</button><button data-v="quiz" aria-pressed="false">퀴즈</button></span></span>
+      <span class="ctl nq"><span class="lbl">블라인드</span>
         <span class="seg" id="blindSeg"><button data-v="none" aria-pressed="true">끔</button><button data-v="en" aria-pressed="false">영어</button><button data-v="ko" aria-pressed="false">뜻</button></span></span>
-      <span class="ctl"><span class="lbl">예문</span>
+      <span class="ctl nq"><span class="lbl">예문</span>
         <span class="seg" id="exSeg"><button data-v="off" aria-pressed="false">끔</button><button data-v="toeic" aria-pressed="false">토익</button><button data-v="siri" aria-pressed="false">시리</button><button data-v="both" aria-pressed="true">둘 다</button></span></span>
       <button class="tog" id="unknownTog" aria-pressed="false">안 외운 것만</button>
       <button class="tog" id="shuffleBtn" aria-pressed="false">섞기</button>
@@ -211,7 +245,7 @@ span.blind{display:inline-block}
 
 <script>
 (function(){
-let ALL = [];
+let ALL = [], BY = new Map(), Q = null;
 const SETS = Array.from({length:48},(_,i)=>({n:i+1,from:i*25+1,to:i*25+25}));
 const store = {
   get(k,d){try{const v=localStorage.getItem('toeic.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
@@ -219,7 +253,7 @@ const store = {
 };
 const S = {
   set: store.get('set25',1), mode: store.get('mode','list'), blind: store.get('blind','none'),
-  ex: store.get('ex','both'), theme: store.get('theme','auto'), onlyUnknown:false, shuffled:false,
+  ex: store.get('ex','both'), qtype: store.get('qtype','spell'), theme: store.get('theme','auto'), onlyUnknown:false, shuffled:false,
   known: new Set(store.get('known',[])), revealed:new Set(), idx:0, flipped:false, order:null,
   accent: store.get('accent','en-US'), rate: store.get('rate','0.9')
 };
@@ -347,6 +381,85 @@ function renderCard(){
     <p class="hint">키보드: ← → 이동 · Space 뒤집기 · P 발음 · K 외움</p>
   </div>`;
 }
+/* ---------- 퀴즈 ---------- */
+const QTYPES=[['spell','뜻→스펠링'],['listen','듣고 쓰기'],['choice','영어→뜻']];
+const norm=t=>String(t).trim().toLowerCase().replace(/\s+/g,' ');
+function qStart(ids){ Q={ids:ids.slice(),i:0,ok:0,right:[],wrong:[],done:false,answered:false,res:null,cur:null}; }
+function qAnswer(ok,given){
+  const id=Q.ids[Q.i]; Q.answered=true; Q.res={ok,given};
+  if(ok){ Q.ok++; Q.right.push(id); } else Q.wrong.push(id);
+  render();
+}
+function qNext(){ Q.i++; Q.answered=false; Q.res=null; Q.cur=null; if(Q.i>=Q.ids.length) Q.done=true; render(); }
+function qOptions(w){
+  const text=x=>x.means[0][1], pos=w.means[0][0];
+  const pool=ALL.filter(x=>x.id!==w.id&&text(x)!==text(w));
+  const same=pool.filter(x=>x.means[0][0]===pos&&Math.abs(x.id-w.id)<150);
+  const pick=[]; const take=src=>{ while(pick.length<3&&src.length){ const x=src.splice(Math.floor(Math.random()*src.length),1)[0]; if(!pick.some(y=>text(y)===text(x))) pick.push(x); } };
+  take(same.slice()); take(pool.slice());
+  return pick.concat(w).sort(()=>Math.random()-.5).map(x=>({id:x.id,text:text(x)}));
+}
+function diffHTML(given,answer){
+  const g=[...given.trim()], a=[...answer]; let o='';
+  for(let i=0;i<Math.max(g.length,a.length);i++){
+    const c=g[i]; if(c==null) o+='<b>_</b>'; else o+=(c.toLowerCase()===(a[i]||'').toLowerCase())?esc(c):`<b>${esc(c)}</b>`;
+  }
+  return o;
+}
+function qFeedback(w){
+  const r=Q.res; if(!r) return '';
+  const ans=`<span class="ans">${esc(w.word)}</span>${w.ipa?`<span class="ipa" style="display:block;margin:0">/${esc(w.ipa)}/</span>`:''}`;
+  if(S.qtype==='choice') return `<div class="fb ${r.ok?'ok':'bad'}"><strong>${r.ok?'정답!':'아쉬워요'}</strong>${ans}${meansHTML(w)}</div>`;
+  return r.ok
+    ? `<div class="fb ok"><strong>정답!</strong>${ans}${S.qtype==='listen'?meansHTML(w):''}</div>`
+    : `<div class="fb bad"><strong>${r.given?'내 답':'정답 보기'}</strong>${r.given?`<span class="mine">${diffHTML(r.given,w.word)}</span>`:''}${ans}${S.qtype==='listen'?meansHTML(w):''}</div>`;
+}
+function renderQuiz(){
+  const tabs=`<div class="qtabs"><span class="seg" id="qtypeSeg" role="group" aria-label="퀴즈 방식">${QTYPES.map(([v,l])=>`<button data-qtype="${v}" aria-pressed="${S.qtype===v}">${l}</button>`).join('')}</span></div>`;
+  if(!Q){ const l=currentWords(); if(!l.length) return `<div class="quiz">${tabs}<div class="empty">${S.onlyUnknown?'이 세트는 다 외웠어요.':'단어가 없어요.'}</div></div>`; qStart(l.map(w=>w.id)); }
+  const n=Q.ids.length;
+  if(Q.done){
+    const wr=Q.wrong.map(id=>BY.get(id));
+    return `<div class="quiz">${tabs}<div class="qbox"><span class="qmeta">결과</span><div class="qsum">${Q.ok} / ${n}</div>
+      <p class="hint" style="margin:0">${Q.ok===n?'전부 맞혔어요! 🎉':wr.length+'개를 틀렸어요. 다시 도전해 볼까요?'}</p>
+      ${wr.length?`<div class="wlist">${wr.map(w=>`<div><b>${esc(w.word)}</b><span class="ipa" style="margin:0">/${esc(w.ipa)}/</span><span>${esc(w.means[0][1])}</span></div>`).join('')}</div>`:''}
+      <div class="qrow">${wr.length?'<button class="btn primary" data-q="retry">틀린 것만 다시</button>':''}<button class="btn" data-q="again">처음부터</button></div>
+      ${Q.right.length?`<button class="linkbtn" data-q="mark">맞힌 ${Q.right.length}개 외움으로 표시</button>`:''}</div></div>`;
+  }
+  const w=BY.get(Q.ids[Q.i]);
+  const head=`<span class="qmeta">${Q.i+1} / ${n} · 정답 ${Q.ok}</span><div class="qbar"><i style="width:${(Q.i+(Q.answered?1:0))/n*100}%"></i></div>`;
+  const next=Q.answered?`<button class="btn primary" data-q="next" style="width:100%;min-height:48px;font-size:16px">${Q.i+1>=n?'결과 보기':'다음 →'}</button>`:'';
+  if(S.qtype==='choice'){
+    if(!Q.cur) Q.cur={opts:qOptions(w)};
+    const r=Q.res;
+    return `<div class="quiz">${tabs}<div class="qbox">${head}
+      <div class="qprompt">${wordHTML(w)}</div>
+      <button class="icon" data-say="${esc(w.word)}" aria-label="발음 듣기">${ICON_SPK}</button>
+      <div class="opts">${Q.cur.opts.map((o,k)=>`<button class="opt${r?(o.id===w.id?' right':(r.given===k?' wrong':'')):''}" data-opt="${k}" ${r?'disabled':''}>${esc(o.text)}</button>`).join('')}</div>
+      ${qFeedback(w)}${next}</div></div>`;
+  }
+  const listen=S.qtype==='listen';
+  const prompt=listen
+    ? `<button class="icon bigspk" data-say="${esc(w.word)}" aria-label="다시 듣기">${ICON_SPK}</button><button class="linkbtn" data-q="peek"${Q.answered?' hidden':''}>뜻 힌트 보기</button><div class="qprompt" id="qPeek" hidden>${meansHTML(w)}</div>`
+    : `<div class="qprompt">${meansHTML(w)}</div><span class="hint">${w.word.length}글자${/[ -]/.test(w.word)?' (띄어쓰기·하이픈 포함)':''}</span>`;
+  return `<div class="quiz">${tabs}<form class="qbox" id="qForm" autocomplete="off">${head}${prompt}
+    <input class="qin" id="qInput" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="${listen?'들리는 단어를 입력':'영어 스펠링 입력'}" aria-label="정답 입력" ${Q.answered?'disabled value="'+esc(Q.res.given||'')+'"':''}>
+    ${Q.answered?'':`<div class="qrow"><button class="btn primary" type="submit">확인</button><button class="btn" type="button" data-q="giveup">모르겠어요</button></div>`}
+    ${qFeedback(w)}${next}</form></div>`;
+}
+function quizAfterRender(){
+  if(!Q||Q.done) return;
+  const w=BY.get(Q.ids[Q.i]);
+  if(Q.answered){ const b=document.querySelector('[data-q="next"]'); if(b) b.focus(); if(S.qtype!=='choice'&&Q.res.given!==undefined) speak(w.word); return; }
+  const inp=$('#qInput'); if(inp) inp.focus({preventScroll:true});
+  if(S.qtype==='listen') setTimeout(()=>speak(w.word),200);
+}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='qForm') return; e.preventDefault();
+  if(!Q||Q.answered) return; const v=$('#qInput').value; if(!v.trim()) return;
+  const w=BY.get(Q.ids[Q.i]); qAnswer(norm(v)===norm(w.word),v);
+});
+
 function render(){
   renderSets(); renderProgress();
   ['modeSeg','blindSeg'].forEach(id=>{const key=id==='modeSeg'?'mode':'blind';
@@ -355,24 +468,36 @@ function render(){
   $('#unknownTog').setAttribute('aria-pressed',S.onlyUnknown);
   $('#shuffleBtn').setAttribute('aria-pressed',S.shuffled);
   $('#accent').value=S.accent; $('#rate').value=S.rate;
-  $('#view').innerHTML = S.mode==='card'?renderCard():renderList();
+  document.querySelector('header').classList.toggle('quizmode',S.mode==='quiz');
+  $('#view').innerHTML = S.mode==='card'?renderCard():S.mode==='quiz'?renderQuiz():renderList();
+  if(S.mode==='quiz') quizAfterRender();
 }
-function save(){ store.set('set25',S.set);store.set('mode',S.mode);store.set('blind',S.blind);store.set('ex',S.ex);store.set('theme',S.theme);store.set('known',[...S.known]);store.set('accent',S.accent);store.set('rate',S.rate); }
+function save(){ store.set('set25',S.set);store.set('mode',S.mode);store.set('blind',S.blind);store.set('ex',S.ex);store.set('qtype',S.qtype);store.set('theme',S.theme);store.set('known',[...S.known]);store.set('accent',S.accent);store.set('rate',S.rate); }
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,[data-reveal],#card'); if(!t) return;
   if(t.dataset.say){ speak(t.dataset.say,t); return; }
+  if(t.dataset.qtype){ S.qtype=t.dataset.qtype; save(); Q=null; render(); return; }
+  if(t.dataset.opt!==undefined&&Q&&!Q.answered){ const k=+t.dataset.opt; Q.res=null; const ok=Q.cur.opts[k].id===Q.ids[Q.i]; qAnswer(ok,k); return; }
+  if(t.dataset.q){ const a=t.dataset.q;
+    if(a==='next') qNext();
+    else if(a==='giveup'&&Q&&!Q.answered) qAnswer(false,'');
+    else if(a==='peek'){ $('#qPeek').hidden=false; t.hidden=true; }
+    else if(a==='retry'){ qStart(Q.wrong); render(); }
+    else if(a==='again'){ Q=null; render(); }
+    else if(a==='mark'){ Q.right.forEach(id=>S.known.add(id)); save(); renderProgress(); t.textContent='외움으로 표시했어요 ✓'; t.disabled=true; }
+    return; }
   if(t.dataset.known){ const id=+t.dataset.known; S.known.has(id)?S.known.delete(id):S.known.add(id); save(); render(); return; }
-  if(t.dataset.set){ S.set=+t.dataset.set; S.idx=0; S.flipped=false; S.order=null; S.revealed.clear(); save(); render(); window.scrollTo(0,0); return; }
-  if(t.closest('#modeSeg')&&t.dataset.v){ S.mode=t.dataset.v; S.flipped=false; save(); render(); return; }
+  if(t.dataset.set){ Q=null; S.set=+t.dataset.set; S.idx=0; S.flipped=false; S.order=null; S.revealed.clear(); save(); render(); window.scrollTo(0,0); return; }
+  if(t.closest('#modeSeg')&&t.dataset.v){ Q=null; S.mode=t.dataset.v; S.flipped=false; save(); render(); return; }
   if(t.closest('#blindSeg')&&t.dataset.v){ S.blind=t.dataset.v; S.revealed.clear(); S.flipped=false; save(); render(); return; }
   if(t.closest('#exSeg')&&t.dataset.v){ S.ex=t.dataset.v; save(); render(); return; }
   if(t.id==='lockBtn'){ store.set('key',null); location.reload(); return; }
   if(t.id==='themeBtn'){ S.theme={auto:'light',light:'dark',dark:'auto'}[S.theme]; save(); applyTheme(); return; }
   if(t.id==='gearBtn'){ const h=document.querySelector('header'); const o=h.classList.toggle('open'); t.setAttribute('aria-expanded',o); return; }
-  if(t.id==='unknownTog'){ S.onlyUnknown=!S.onlyUnknown; S.idx=0; render(); return; }
-  if(t.id==='shuffleBtn'){ S.shuffled=!S.shuffled; S.order=null; S.idx=0; render(); return; }
+  if(t.id==='unknownTog'){ Q=null; S.onlyUnknown=!S.onlyUnknown; S.idx=0; render(); return; }
+  if(t.id==='shuffleBtn'){ Q=null; S.shuffled=!S.shuffled; S.order=null; S.idx=0; render(); return; }
   if(t.id==='prev'){ step(-1); return; }
   if(t.id==='next'){ step(1); return; }
   if(t.id==='card'){ flip(); return; }
@@ -423,6 +548,7 @@ async function decryptWith(key,enc){
 }
 function start(rows){
   ALL=rows.map(r=>({id:r[0],word:r[1],means:r[2],ex:r[3],exKo:r[4],siri:r[5],siriKo:r[6],ipa:r[7]||''}));
+  BY=new Map(ALL.map(w=>[w.id,w]));
   $('#lock').hidden=true;
   if(!ALL.some(w=>Math.ceil(w.id/25)===S.set)) S.set=1;
   render();
