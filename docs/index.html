@@ -165,6 +165,9 @@ header.quizmode .nq{display:none}
 .wlist{width:100%;text-align:left;display:grid;gap:6px;font-size:14px}
 .wlist div{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:6px}
 .wlist b{font-family:var(--f-word);font-size:16px}
+.endcap{margin-top:16px;padding:18px 16px;border:1px dashed var(--accent);border-radius:12px;background:var(--accent-soft);display:grid;gap:10px;justify-items:center;text-align:center}
+.endcap p{margin:0;font-size:14px;color:var(--ink)}
+.endcap .btn{min-height:48px;font-size:16px;padding:10px 22px}
 .linkbtn{border:0;background:none;color:var(--accent);font-size:13px;text-decoration:underline;padding:4px}
 /* 잠금 화면 */
 #lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px max(24px,env(safe-area-inset-right)) 24px max(24px,env(safe-area-inset-left))}
@@ -322,6 +325,9 @@ function exHTML(w){
   if(!out.length) return `<div class="ex"><span class="none">예문 준비 중</span></div>`;
   return out.join('');
 }
+function endcapHTML(n){
+  return `<div class="endcap"><p><strong>${SETS[S.set-1].from}–${SETS[S.set-1].to}</strong>  세트 끝! ${n}단어를 미니게임으로 확인해 볼까요?</p><button class="btn primary" data-startquiz="1">🎮 미니게임 시작</button></div>`;
+}
 function renderSets(){
   const have=new Set(ALL.map(w=>Math.ceil(w.id/25)));
   $('#sets').innerHTML=SETS.map(s=>`<button class="set" data-set="${s.n}" aria-pressed="${s.n===S.set}" ${have.has(s.n)?'':'disabled title="이 구간 PDF가 없어요"'}>${s.from}–${s.to}</button>`).join('');
@@ -349,7 +355,7 @@ function renderList(){
         <button class="icon" data-say="${esc(w.word)}" aria-label="${esc(w.word)} 발음 듣기">${ICON_SPK}</button>
         <button class="icon check" data-known="${w.id}" aria-pressed="${S.known.has(w.id)}" aria-label="외운 단어로 표시">${ICON_OK}</button>
       </div>
-    </div>`).join('')+`</div>`;
+    </div>`).join('')+`</div>`+endcapHTML(list.length);
 }
 function renderCard(){
   const list=currentWords();
@@ -379,6 +385,7 @@ function renderCard(){
       <button class="tog" data-known="${w.id}" aria-pressed="${S.known.has(w.id)}">${S.known.has(w.id)?'외움 ✓':'외움 표시'}</button>
     </div>
     <p class="hint">키보드: ← → 이동 · Space 뒤집기 · P 발음 · K 외움</p>
+    ${S.idx===list.length-1?endcapHTML(list.length):''}
   </div>`;
 }
 /* ---------- 퀴즈 ---------- */
@@ -424,6 +431,7 @@ function renderQuiz(){
       <p class="hint" style="margin:0">${Q.ok===n?'전부 맞혔어요! 🎉':wr.length+'개를 틀렸어요. 다시 도전해 볼까요?'}</p>
       ${wr.length?`<div class="wlist">${wr.map(w=>`<div><b>${esc(w.word)}</b><span class="ipa" style="margin:0">/${esc(w.ipa)}/</span><span>${esc(w.means[0][1])}</span></div>`).join('')}</div>`:''}
       <div class="qrow">${wr.length?'<button class="btn primary" data-q="retry">틀린 것만 다시</button>':''}<button class="btn" data-q="again">처음부터</button></div>
+      <button class="linkbtn" data-q="tolist">단어장으로 돌아가기</button>
       ${Q.right.length?`<button class="linkbtn" data-q="mark">맞힌 ${Q.right.length}개 외움으로 표시</button>`:''}</div></div>`;
   }
   const w=BY.get(Q.ids[Q.i]);
@@ -478,6 +486,8 @@ function save(){ store.set('set25',S.set);store.set('mode',S.mode);store.set('bl
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,[data-reveal],#card'); if(!t) return;
   if(t.dataset.say){ speak(t.dataset.say,t); return; }
+  if(t.dataset.startquiz){ Q=null; S.mode='quiz'; S.flipped=false; save(); render(); window.scrollTo(0,0); return; }
+  if(t.dataset.q==='tolist'){ Q=null; S.mode='list'; save(); render(); window.scrollTo(0,0); return; }
   if(t.dataset.qtype){ S.qtype=t.dataset.qtype; save(); Q=null; render(); return; }
   if(t.dataset.opt!==undefined&&Q&&!Q.answered){ const k=+t.dataset.opt; Q.res=null; const ok=Q.cur.opts[k].id===Q.ids[Q.i]; qAnswer(ok,k); return; }
   if(t.dataset.q){ const a=t.dataset.q;
